@@ -103,7 +103,7 @@ parseFloat = do
 
 
 parseList :: Parser LispVal
-parseList = liftM List $ sepBy parseExpr spaces
+parseList = liftM List $ parseExpr `sepBy` spaces
 
 
 parseDottedList :: Parser LispVal
@@ -126,8 +126,32 @@ parseQuoted = do
   x <- parseExpr
   return $ List [Atom "quote", x]
 
+
+parseVector :: Parser LispVal
+parseVector = do
+  string "#("
+  values <- parseExpr `sepBy` spaces
+  char ')'
+  return $ List $ [Atom "vector"] ++ values
+
+
 parseHash :: Parser LispVal
-parseHash = try parseNumber <|> parseBool <|> parseChar
+parseHash = try parseVector <|> parseNumber <|> parseBool <|> parseChar
+
+
+parseQuasiQuoted :: Parser LispVal
+parseQuasiQuoted = do
+  char '`'
+  x <- parseExpr
+  return $ List [Atom "quasiquote", x]
+
+
+parseUnQuote :: Parser LispVal
+parseUnQuote = do
+  char ','
+  x <- parseExpr
+  return $ List [Atom "unquote", x]
+
 
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
@@ -136,6 +160,8 @@ parseExpr = parseAtom
         <|> parseHash
         <|> parseQuoted
         <|> parseLists
+        <|> parseQuasiQuoted
+        <|> parseUnQuote
 
 
 readExpr :: String -> String
