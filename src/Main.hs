@@ -9,8 +9,10 @@ data LispVal = Atom String
              | List [LispVal]
              | DottedList [LispVal] LispVal
              | Number Integer
+             | Float Double
              | String String
              | Bool Bool
+             | Character Char
                deriving(Show)
 
 
@@ -82,9 +84,30 @@ parseHex = do try $ string "#x"
 
 firstOfFirst x = fst $ x !! 0
 
+parseChar :: Parser LispVal
+parseChar = do
+ try $ string "#\\"
+ value <- try (string "newline" <|> string "space")
+         <|> do { x <- anyChar; notFollowedBy alphaNum ; return [x] }
+ return $ Character $ case value of
+                        "space" -> ' '
+                        "newline" -> '\n'
+                        otherwise -> (value !! 0)
+
+parseFloat :: Parser LispVal
+parseFloat = do
+  dec <- many1 digit
+  dot <- oneOf "."
+  frac <- many1 digit
+  return $ (Float . firstOfFirst . readFloat) (dec ++ [dot] ++ frac)
 
 parseExpr :: Parser LispVal
-parseExpr = parseAtom <|> parseString <|> parseNumber <|> parseBool
+parseExpr = parseAtom
+        <|> parseString
+        <|> parseFloat
+        <|> try parseNumber
+        <|> try parseBool
+        <|> try parseChar
 
 
 readExpr :: String -> String
