@@ -101,13 +101,41 @@ parseFloat = do
   frac <- many1 digit
   return $ (Float . firstOfFirst . readFloat) (dec ++ [dot] ++ frac)
 
+
+parseList :: Parser LispVal
+parseList = liftM List $ sepBy parseExpr spaces
+
+
+parseDottedList :: Parser LispVal
+parseDottedList = do
+  head <- endBy parseExpr spaces
+  tail <- char '.' >> spaces >> parseExpr
+  return $ DottedList head tail
+
+
+parseLists :: Parser LispVal
+parseLists = do
+  char '('
+  x <- try parseList <|> parseDottedList
+  char ')'
+  return x
+
+parseQuoted :: Parser LispVal
+parseQuoted = do
+  char '\''
+  x <- parseExpr
+  return $ List [Atom "quote", x]
+
+parseHash :: Parser LispVal
+parseHash = try parseNumber <|> parseBool <|> parseChar
+
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
         <|> parseString
         <|> parseFloat
-        <|> try parseNumber
-        <|> try parseBool
-        <|> try parseChar
+        <|> parseHash
+        <|> parseQuoted
+        <|> parseLists
 
 
 readExpr :: String -> String
